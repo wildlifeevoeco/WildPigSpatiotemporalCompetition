@@ -289,9 +289,8 @@ library(plotrix)
 #data 
 cox_analyze <- read_csv("Data/Processed/cox_analyze.csv")
 
-#labeling the human interuppted interactions for censoring. 
-cox_analyze$Type[cox_analyze$Type == "Human_native"] <- "Censor"
-cox_analyze$Type[cox_analyze$Type == "Human_boar"] <- "Censor"
+#remove the human observations, just wanted to not include them inturrupting 
+cox_analyze <- subset(cox_analyze$Type, select = -c("Human_native", "Human_boar"))  
 
 #looking at structure 
 str(cox_analyze)
@@ -303,35 +302,31 @@ cox_analyze$Habitat_Ty <- as.factor(cox_analyze$Habitat_Ty)
 
 #need TTE's as positive not negative numbers. Function calculates TTE as a negative 
 cox_analyze$TTE <- abs(cox_analyze$TTE)
-
-#Cox ph models take censor as 0's and data as 1's
-cox_analyze$Censor <- ifelse(cox_analyze$Type == "Censor", 0, 1)
-_c_analyze <- as.data.frame(moose_c_analyze)
 #####################################################################################################
 #model set for ranking based on the few imp. covars were interested in
 
 #just a test model to make sure structure works. 
-test <- coxph(Surv(TTE, Censor) ~ 1, data = cox_analyze)
+test <- coxph(Surv(TTE) ~ 1, data = cox_analyze)
 summary(test)
 AIC(test)
 
 #base model with just cams as a random intercept. 
-base <- coxme(Surv(TTE, Censor) ~ (1|Camera), data = cox_analyze)
+base <- coxme(Surv(TTE) ~ (1|Camera), data = cox_analyze)
 summary(base)
 AICbase <- AICc(base)
 
 #next model with just interaction type 
-model1 <- coxme(Surv(TTE, Censor) ~ Type + (1|Camera), data = cox_analyze)
+model1 <- coxme(Surv(TTE) ~ Type + (1|Camera), data = cox_analyze)
 summary(model1)
 AIC1 <- AICc(model1)
 
 #habitat type 
-model2 <- coxme(Surv(TTE, Censor) ~ Habitat_Ty + (1|Camera), data = cox_analyze)
+model2 <- coxme(Surv(TTE) ~ Habitat_Ty + (1|Camera), data = cox_analyze)
 summary(model2)
 AIC2 <- AICc(model2)
 
 #habitat + interaction type 
-model <- coxme(Surv(TTE, Censor) ~ Habitat_Ty + Type  + (1|Camera), data = cox_analyze)
+model <- coxme(Surv(TTE) ~ Habitat_Ty + Type  + (1|Camera), data = cox_analyze)
 summary(model)
 AIC3 <- AICc(model)
 
@@ -366,19 +361,19 @@ cox_analyze$risk <- coxme:::predict.coxme(model, type="risk")
 
 #sub setting the predicted risk by the interaction type and then generating summary stats 
 b_b <- filter(cox_analyze, Type == "Boar_boar")
-mean(b_b$risk)  #0.8269305
-median(b_b$risk)#0.845022
-std.error(b_b$risk) #0.007568203
+mean(b_b$risk)  
+median(b_b$risk)
+std.error(b_b$risk) 
 
 b_n <- filter(cox_analyze, Type == "Boar_native")
-mean(b_n$risk) #0.595333
-median(b_n$risk) #0.5894162
-std.error(b_n$risk) #0.01822909
+mean(b_n$risk) 
+median(b_n$risk) 
+std.error(b_n$risk)
 
 n_n <- filter(cox_analyze, Type == "Anative_native")
-mean(n_n$risk) #1.004322
-median(n_n$risk) #1.006868
-std.error(n_n$risk) #0.004615157
+mean(n_n$risk) 
+median(n_n$risk) 
+std.error(n_n$risk) 
 
 #######################################################################
 #making figures for the predicted risk values
@@ -388,7 +383,7 @@ library(ggplot2)
 library(ggpubr)
 
 #create a new DF dropping the censor data so I can make a boxplot of predicted risk. 
-boxplot_data <- subset(cox_analyze, Type!="Censor")
+boxplot_data <- cox_analyze
 
 boxplot_data$Type <- as.character(boxplot_data$Type)
 
@@ -413,6 +408,21 @@ ggplot(data = boxplot_data, mapping = aes(x = Type, y = risk, fill=Type)) +
   xlab("Type of species to species event") + ylab("Predicted hazard value") +
   theme(axis.title=element_text(size=16, colour = "black")) +
   theme(axis.text=element_text(size=16, colour = "black")) +
+  geom_hline(yintercept = 1, linetype="dashed", alpha=0.3)
+
+
+#violin plot for all species events and habitat combinations 
+  ggplot(data = boxplot_data, mapping = aes(x = interaction(Type,Habitat_Ty), y = risk, fill=Type)) +
+  geom_violin() +
+  scale_fill_manual(values = c("#E69F00", "#993300", "#009E73")) +
+  geom_jitter(alpha = 0.2) +
+  theme_classic() +
+  theme(legend.title= element_blank()) +
+  theme(legend.position = "none") +
+  xlab("Type of species to species event per habitat") + ylab("Predicted hazard values") +
+  theme(axis.title=element_text(size=10, colour = "black"),  plot.margin = margin(, 0.7, , , "cm")) +
+  theme(axis.text=element_text(size=6, colour = "black")) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
   geom_hline(yintercept = 1, linetype="dashed", alpha=0.3)
 
 ###############################################################################
@@ -451,6 +461,58 @@ ggplot(model.summary, aes(x=Coefs, y=Values)) +
   annotate("text", x = 4, y = 0.5, size = 12,
            label = "*",
            fontface = "bold")
+
+################################################################################
+#Bootstrap re-sampling 
+
+#subset data to species to species interactions
+boar_boar <- subset(cox_analyze, Type == "Boar_boar")
+boar_native <- subset(cox_analyze, Type == "Boar_native")
+native_native <- subset(cox_analyze, Type == "Native_native")
+
+#resampling within event types for large sample sizes 
+b_n_b <- sample(boar_native$TTE, 1000, replace = TRUE)
+b_n_b <- as.data.frame(b_n_b)
+names(b_n_b)[names(b_n_b) == "b_n_b"] <- "tte"
+b_n_b$'Event type' <- rep("wild pig:native species", times =)
+
+b_b_b <- sample(boar_boar$TTE, 1000, replace = TRUE)
+b_b_b <- as.data.frame(b_b_b)
+names(b_b_b)[names(b_b_b) == "b_b_b"] <- "tte"
+b_b_b$'Event type' <- rep("wild pig:wild pig", times =)
+
+n_n_b <- sample(native_native$TTE, 1000, replace = TRUE)
+n_n_b <- as.data.frame(n_n_b)
+names(n_n_b)[names(n_n_b) == "n_n_b"] <- "tte"
+n_n_b$'Event type' <- rep("native:native species", times =)
+
+#binding event types and re-sampled data
+boot <- rbind.data.frame(b_b_b, b_n_b, n_n_b)
+
+#geometric means of TTE for re-sampled data 
+exp(mean(log(boot$tte[boot$`Event type` == "wild pig:wild pig"])))  #7.611682 
+exp(mean(log(boot$tte[boot$`Event type` == "wild pig:native species"]))) #12.00339
+exp(mean(log(boot$tte[boot$`Event type` == "native:native species"]))) #6.556135
+
+#plotting PDF of re-sampled data by event type
+ggplot(boot, aes(tte, fill = `Event type` , colour = `Event type`)) +
+  geom_density(alpha = 0.2) +
+  scale_fill_manual(values = c("#E69F00", "#993300", "#009E73")) +
+  scale_colour_manual(values = c("#E69F00", "#993300", "#009E73")) +
+  geom_vline(xintercept = 6.556135, linetype="dashed", 
+             color = "#E69F00", size=1) +
+  geom_vline(xintercept = 7.611682, linetype="dashed", 
+             color = "#009E73", size=1) +
+  geom_vline(xintercept = 12.00339, linetype="dashed", 
+             color = "#993300", size=1) +
+  scale_x_continuous(expand = c(0, 0)) + scale_y_continuous(expand = c(0, 0)) +
+  ylab("Probability density of bootstrapped data") + xlab("Time between events (hours)") +
+  theme_classic() + 
+  theme(legend.position = "top") +  
+  theme(axis.title=element_text(size=10, colour = "black")) +
+  theme(axis.text=element_text(size=10, colour = "black")) +
+  theme(legend.title=element_text(size=10.5, colour = "black")) +
+  theme(legend.text=element_text(size=10, colour = "black"))
 
 
 
