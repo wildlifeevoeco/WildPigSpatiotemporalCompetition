@@ -463,57 +463,78 @@ ggplot(model.summary, aes(x=Coefs, y=Values)) +
            fontface = "bold")
 
 ################################################################################
-#Bootstrap re-sampling 
+#Figure to show that we have confidence in difference between species to species distributions
+                         
+#subset raw DF to only be Native-native to gen a PDF
+#c("#E69F00", "#993300", "#009E73")
 
-#subset data to species to species interactions
-boar_boar <- subset(cox_analyze, Type == "Boar_boar")
-boar_native <- subset(cox_analyze, Type == "Boar_native")
-native_native <- subset(cox_analyze, Type == "Native_native")
+library(png)
+library(jpeg)
+library(grid)
 
-#resampling within event types for large sample sizes 
-b_n_b <- sample(boar_native$TTE, 1000, replace = TRUE)
-b_n_b <- as.data.frame(b_n_b)
-names(b_n_b)[names(b_n_b) == "b_n_b"] <- "tte"
-b_n_b$'Event type' <- rep("wild pig:native species", times =)
+#calculating the bounds that the boxplot data will be held by
+n_n_sub <- subset(cox_analyze, Type == "Native_native")
+b_n_sub <- subset(cox_analyze, Type == "Boar_native")
+max(b_n_sub$TTE) #63.29236
+min(b_n_sub$TTE) #1.043056
 
-b_b_b <- sample(boar_boar$TTE, 1000, replace = TRUE)
-b_b_b <- as.data.frame(b_b_b)
-names(b_b_b)[names(b_b_b) == "b_b_b"] <- "tte"
-b_b_b$'Event type' <- rep("wild pig:wild pig", times =)
+b_b_sub <- subset(cox_analyze, Type == "Boar_boar")
+max(b_b_sub$TTE) #30.86597
+min(b_b_sub$TTE) #1.133333
 
-n_n_b <- sample(native_native$TTE, 1000, replace = TRUE)
-n_n_b <- as.data.frame(n_n_b)
-names(n_n_b)[names(n_n_b) == "n_n_b"] <- "tte"
-n_n_b$'Event type' <- rep("native:native species", times =)
+#subsetting data types to not include native native for boxplot
+box_sub <- subset(cox_analyze, !Type == "Native_native")
 
-#binding event types and re-sampled data
-boot <- rbind.data.frame(b_b_b, b_n_b, n_n_b)
+#generating a boxplot of mean + range TTE for small sample size Types
+b_n_boxplot_img <- ggplot(box_sub) +
+  geom_boxplot(aes(TTE, colour=Type), data =box_sub, lwd=2) +
+  scale_fill_manual(values = c("#993300", "#E69F00")) +
+  scale_colour_manual(values = c("#993300","#E69F00")) +
+  #NOTE HERE: I expanded X_axis by 0.5 units so outlier would fit
+  #need to expland placement below by 0.5 
+  scale_x_continuous(expand = c(0, 0.5)) + scale_y_continuous(expand = c(0, 0)) +
+  theme_classic()  +
+  theme(legend.position = "none") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.line = element_blank(),
+        axis.title = element_blank())
 
-#geometric means of TTE for re-sampled data 
-exp(mean(log(boot$tte[boot$`Event type` == "wild pig:wild pig"])))  #7.611682 
-exp(mean(log(boot$tte[boot$`Event type` == "wild pig:native species"]))) #12.00339
-exp(mean(log(boot$tte[boot$`Event type` == "native:native species"]))) #6.556135
+#saving blank version of the boxplot to be imposed with probabilty distribution
 
-#plotting PDF of re-sampled data by event type
-ggplot(boot, aes(tte, fill = `Event type` , colour = `Event type`)) +
-  geom_density(alpha = 0.2) +
-  scale_fill_manual(values = c("#E69F00", "#993300", "#009E73")) +
-  scale_colour_manual(values = c("#E69F00", "#993300", "#009E73")) +
-  geom_vline(xintercept = 6.556135, linetype="dashed", 
-             color = "#E69F00", size=1) +
-  geom_vline(xintercept = 7.611682, linetype="dashed", 
-             color = "#009E73", size=1) +
-  geom_vline(xintercept = 12.00339, linetype="dashed", 
-             color = "#993300", size=1) +
-  scale_x_continuous(expand = c(0, 0)) + scale_y_continuous(expand = c(0, 0)) +
-  ylab("Probability density of bootstrapped data") + xlab("Time between events (hours)") +
+ggsave("/Users/brendan/Desktop/MUN/Eric_Sean_project/R_Pigs_co-occur/Output/Box_insert.png",
+       plot = b_n_boxplot_img, 
+       device = "png")
+
+#calling back image
+path <- "/Users/brendan/Desktop/MUN/Eric_Sean_project/R_Pigs_co-occur/Output/Box_insert.png"
+img <- readPNG(path, native = TRUE)
+img <- rasterGrob(img, interpolate=TRUE)
+
+
+#plotting image of boxplot of pig-pig and pig-native categories on top of 
+#a probability distribution of native-native 
+ggplot() +
+  #because i extended the values above for the image to fit, need to call same 
+  #x-dimensions so the .png is accurately on the PDF x-axis.
+  #set annotation values to values of raw data (with a 0.5 extension, see above)
+  annotation_custom(img, xmin=0.543056, xmax=63.79236, ymin=, ymax=) +
+  geom_density(aes(TTE,colour=Type, fill=Type), alpha = 0.2, data=n_n_sub) +
+  scale_colour_manual(values = c("#009E73"), guide = 'none') +
+  scale_fill_manual(values = c("#E69F00", "#993300", "#009E73"), 
+                    labels = c("Wild pig:wild pig", "Wild pig:native", "Native:native species"), 
+                    drop = FALSE) +
+  scale_x_continuous(expand = c(0, 0)) + 
+  scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
+  ylab("Probability density of observed data") + xlab("Time between events (hours)") +
   theme_classic() + 
-  theme(legend.position = "top") +  
+  theme(legend.position = c(0.8,0.8)) +  
   theme(axis.title=element_text(size=10, colour = "black")) +
   theme(axis.text=element_text(size=10, colour = "black")) +
   theme(legend.title=element_text(size=10.5, colour = "black")) +
-  theme(legend.text=element_text(size=10, colour = "black"))
-
+  theme(legend.text=element_text(size=10, colour = "black")) 
 
 
 
