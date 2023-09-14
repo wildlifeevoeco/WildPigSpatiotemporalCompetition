@@ -464,10 +464,7 @@ ggplot(model.summary, aes(x=Coefs, y=Values)) +
 
 ################################################################################
 #Figure to show that we have confidence in difference between species to species distributions
-                         
-#subset raw DF to only be Native-native to gen a PDF
-#c("#E69F00", "#993300", "#009E73")
-
+#new packages required                
 library(png)
 library(jpeg)
 library(grid)
@@ -477,19 +474,37 @@ n_n_sub <- subset(cox_analyze, Type == "Native_native")
 b_n_sub <- subset(cox_analyze, Type == "Boar_native")
 max(b_n_sub$TTE) #63.29236
 min(b_n_sub$TTE) #1.043056
+exp(mean(log(b_n_sub$TTE))) #11.28308
+mean(b_n_sub$TTE) #19.2628
+median(b_n_sub$TTE) #14.86667
+
 
 b_b_sub <- subset(cox_analyze, Type == "Boar_boar")
 max(b_b_sub$TTE) #30.86597
 min(b_b_sub$TTE) #1.133333
+exp(mean(log(b_b_sub$TTE))) #7.745591
+mean(b_b_sub$TTE) #13.1774
+median(b_b_sub$TTE) #11
 
 #subsetting data types to not include native native for boxplot
 box_sub <- subset(cox_analyze, !Type == "Native_native")
 
+#bootstrapping native-to-native species dist'n to n=7 (smallest sample in data), and reiterating 1000x
+#highlighting that despite small sample, trends still hold
+set.seed(08092023)
+TTE <- replicate(1000, median(sample(n_n_sub$TTE, 7, replace = TRUE)))
+
+n_n_boot_sample <- as.data.frame(seq(1:1000))
+n_n_boot_sample$TTE <- unlist(TTE)
+n_n_boot_sample$Type <- rep("Native_native") 
+n_n_boot_sample$Type <- as.factor(n_n_boot_sample$Type)
+n_n_boot_sample <- as.data.frame(n_n_boot_sample)
+
 #generating a boxplot of mean + range TTE for small sample size Types
 b_n_boxplot_img <- ggplot(box_sub) +
-  geom_boxplot(aes(TTE, colour=Type), data =box_sub, lwd=2) +
-  scale_fill_manual(values = c("#993300", "#E69F00")) +
-  scale_colour_manual(values = c("#993300","#E69F00")) +
+  geom_boxplot(aes(TTE, colour=Type), data =box_sub, lwd=1) +
+  scale_fill_manual(values = c("#E69F00", "#993300")) +
+  scale_colour_manual(values = c("#E69F00", "#993300")) +
   #NOTE HERE: I expanded X_axis by 0.5 units so outlier would fit
   #need to expland placement below by 0.5 
   scale_x_continuous(expand = c(0, 0.5)) + scale_y_continuous(expand = c(0, 0)) +
@@ -504,15 +519,14 @@ b_n_boxplot_img <- ggplot(box_sub) +
 
 #saving blank version of the boxplot to be imposed with probabilty distribution
 
-ggsave("/Users/brendan/Desktop/MUN/Eric_Sean_project/R_Pigs_co-occur/Output/Box_insert.png",
+ggsave("/Output/Box_insert.png",
        plot = b_n_boxplot_img, 
        device = "png")
 
 #calling back image
-path <- "/Users/brendan/Desktop/MUN/Eric_Sean_project/R_Pigs_co-occur/Output/Box_insert.png"
+path <- "/Output/Box_insert.png"
 img <- readPNG(path, native = TRUE)
 img <- rasterGrob(img, interpolate=TRUE)
-
 
 #plotting image of boxplot of pig-pig and pig-native categories on top of 
 #a probability distribution of native-native 
@@ -520,21 +534,42 @@ ggplot() +
   #because i extended the values above for the image to fit, need to call same 
   #x-dimensions so the .png is accurately on the PDF x-axis.
   #set annotation values to values of raw data (with a 0.5 extension, see above)
-  annotation_custom(img, xmin=0.543056, xmax=63.79236, ymin=, ymax=) +
-  geom_density(aes(TTE,colour=Type, fill=Type), alpha = 0.2, data=n_n_sub) +
-  scale_colour_manual(values = c("#009E73"), guide = 'none') +
-  scale_fill_manual(values = c("#E69F00", "#993300", "#009E73"), 
-                    labels = c("Wild pig:wild pig", "Wild pig:native", "Native:native species"), 
+  annotation_custom(img, xmin=0, xmax=63, ymin=0, ymax=) +
+  #adding density of bootstrapped (n=7) median values x 1000
+  geom_density(aes(TTE, fill=Type, colour=Type), alpha = 0.15, data=n_n_boot_sample) +
+  scale_colour_manual(name = "Event type",
+                      guide = "legend",
+                      labels = c("Wild pig to native","Wild pig to wild pig","Native to native species"),
+                      values = c("#993300","#E69F00", "#009E73"),
+                      drop = FALSE) +
+  scale_fill_manual(name = "Event type",
+                    guide = "legend",
+                    labels = c("Wild pig to native","Wild pig to wild pig","Native to native species"),
+                    values = c("#993300", "#E69F00", "#009E73"),
                     drop = FALSE) +
-  scale_x_continuous(expand = c(0, 0)) + 
-  scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
-  ylab("Probability density of observed data") + xlab("Time between events (hours)") +
+  scale_x_continuous(limits = c(0,64), expand = expansion(mult = c(0, 0)) ) + 
+  scale_y_continuous(limits = c(0,0.13), expand = expansion(mult = c(0, 0))) +
+  ylab("Relative density ") + 
+  xlab("Time between events (hrs)") +
   theme_classic() + 
-  theme(legend.position = c(0.8,0.8)) +  
+  theme(legend.position = c(0.67,0.82)) +  
   theme(axis.title=element_text(size=10, colour = "black")) +
   theme(axis.text=element_text(size=10, colour = "black")) +
   theme(legend.title=element_text(size=10.5, colour = "black")) +
-  theme(legend.text=element_text(size=10, colour = "black")) 
+  theme(legend.text=element_text(size=10, colour = "black")) +
+  #pig:pig line not needed here, box almost touches 0
+  #pig to native line
+  geom_segment(aes(x=14.8,y=0,xend=14.85,yend=0.069),
+               linetype="dashed", color = "#993300", linewidth = 1.5) 
+
+#percentage of values that fall within dist'n of native-native
+# pig to native species MEDIAN: 14.86667
+(sum(n_n_boot_sample$TTE<14.86667)) / (length(n_n_boot_sample$TTE))
+#median lies above 92% of resampled n-n
+
+# pig to pig mean: MEDIAN: 11
+(sum(n_n_boot_sample$TTE<11)) / (length(n_n_boot_sample$TTE))
+#median lies above 84% of resampled n-n
 
 
 
