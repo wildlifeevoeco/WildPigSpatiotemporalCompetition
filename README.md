@@ -8,8 +8,8 @@
      - Floris van Beest
      - [Eric Vander Wal](https://weel.gitlab.io/)
 
-Canadian Journal of Zoology. https://doi.org/10.1139.CJZ-2022-0145
 
-This repository contains the code accompanying the paper ["Variation in temporal activity may reduce competitive interaction between native and introduced species"].
-Scripts are under `scripts/`.  
 
+This repository contains the code accompanying the paper "Variation in spatiotemporal activity may reduce competitive interactions between invasive wild pigs (*Sus scrofa*) and native mammal species" Canadian Journal of Zoology. https://doi.org/10.1139.CJZ-2022-0145
+
+Scripts are under `scripts/`. 
