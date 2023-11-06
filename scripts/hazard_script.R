@@ -1,8 +1,6 @@
-###############################################################################
-#Code for Carswell et al. wild pigs paper
 #Script 1: Contains code for proportional hazard models + plotting coef's
 
-#loading 1st set of req. packages
+#packages
 library(dplyr)
 library(readr)
 library(camtrapR)
@@ -15,22 +13,20 @@ library(data.table)
 library(janitor)
 library(stats)
 
-#loading OG boar data from. 
+#data import
 BoarDATA <- read_csv("Data/Processed/BoarDATA.csv", 
                      col_types = cols(posixdate = col_datetime(format = "%m/%d/%Y %H:%M")))
 
 ########################################################################################################
 #this section will identify the species of interest, and filter out the species recorded 
-## that are unlikely to be ecologically affected (or at least managers wont care by many interactions)
 
 #convert to data table to work with
 BoarDATA2 <- as.data.table(BoarDATA)
 
-#converting boar --> invasive species and mammals of interest to native b/c we need to group to have enough 
-#observations 
+#converting boar --> invasive species and mammals of interest to native
 species_interest <- c("Native", "Invasive", "Human")
 
-#creating a new column so I have an OG reference to bounce off of 
+#new species column to work off as reference 
 BoarDATA2$Native <- BoarDATA2$Animal
 
 #then renaming the species to native / invasive 
@@ -44,15 +40,15 @@ BoarDATA2$Native[BoarDATA2$Native == "Mule Deer"] <- "Native"
 #importnat to include us at cameras for censoring  
 BoarDATA2$Native[BoarDATA2$Native == "Human"] <- "Human"
 
-#sorting DT by species of interest 
+#sorting by species of interest 
 BoarDATA2[, interest := Native %in% species_interest]
 
-# and creating a new DF of only species of interest
+#only species of interest
 BoarDATA3 <- filter(BoarDATA2, interest == TRUE)
 BoarDATA3 <- as.data.frame(BoarDATA3)
 
 ########################################################################################################
-## Much of this code is adapted from Louvrier et al. 2021
+##code adapted from Louvrier et al. 2021
 #I wasnt able to get the function (below) to run without re-naming my variables to the same names they had.
 #so just aligning our data so the function can run correctly.
 CT_act_MN <- BoarDATA3
@@ -76,14 +72,13 @@ class(d1_interest$DateTimeOriginal)
 id_CT <- unique(d1_interest$Station)
 
 ########################################################################################################
-## this is the function published in Louvrier et al. 2021 which calculates time 
-## between desired sequential events for a given camera trap. 
+#Louvrier et al. 2021 function which calculates time between sequential events for a given camera trap. 
 
 calculate_delta <- function(species)
 {
   #empty list 
   delta_species <- list(0)
-  ###loop starts here
+  #loop starts here
   
   for(j in id_CT)
   {
@@ -104,9 +99,7 @@ calculate_delta <- function(species)
       if (paste(B_ordered[c(i:(i+1)),"Species"], collapse ="") == paste(species, collapse=""))
       { 
         diff <- difftime(B_ordered[i,"DateTimeOriginal"], B_ordered[i+1,"DateTimeOriginal"])
-        if (diff < - 10000) #the only reason i left these in is b/c the f(x)n wouldn't run without it
-        {                   #and i dont know enough to re-write. I just extended the time to a massive # to make it useless tho.
-                            # you can adjust this time depending on your desired study
+        if (diff < - 10000) 
           delta[i] <- 0 
         }
         if (diff >= -10000)
@@ -123,21 +116,20 @@ calculate_delta <- function(species)
   return(delta_species)
   
 }
-
 #################################################################################
-##selecting the combo of invasive boar --> any native species 
+#selecting the combo of invasive wild pig --> any native species 
 species = c(species_interest[2],species_interest[1])
 delata_boar_any <- calculate_delta(species)
 #putting this in a dataframe 
 df_time_diff_boar_any = plyr::ldply(delata_boar_any, rbind)
 
-##next interactions.... selecting the combo of any native --> any native sp of interest 
+##next interactions.... combo of any native --> any native sp of interest 
 species = c(species_interest[1],species_interest[1])
 delata_any_any <- calculate_delta(species) 
 #putting this in a dataframe 
 df_time_diff_any_any = plyr::ldply(delata_any_any, rbind)
 
-##final interaction of interest... boar --> boar 
+##final interaction of interest... wild pig --> wild pig 
 species = c(species_interest[2],species_interest[2])
 delata_boar_boar <- calculate_delta(species) 
 #putting this in a dataframe 
@@ -156,46 +148,43 @@ delata_human_boar <- calculate_delta(species)
 df_time_diff_human_boar = plyr::ldply(delata_human_boar, rbind)
 
 #################################################################################
-#The 'df_time_diff' dataframes are large and very jumbled 
-# below i extract the TTE's in a weird way... but it works 
+#need to extract time-to-event values from dataframes 
 
-#first step is to pivot longer... then last two columns in the DF end up the TTE's + the camera associated with 
-#boar --> native species combo
+#pivot longer,  last two columns in the DF = TTE's + the camera associated with 
+#wild pig --> native species combo
 boar_any_extract <- tidyr::pivot_longer(df_time_diff_boar_any, c(2:50), values_drop_na = TRUE)
-#and then extracting the two columns at the end..
+# extracting the two columns
 boar_any_extracted <- cbind.data.frame(boar_any_extract$.id, boar_any_extract$value)
 #create a new column labelling that this is the interaction
 boar_any_extracted$Type <- rep(c("Boar_native"), times = 7)
-#also need to fix the names. ARGH.There must be an easier way to do this but I'm not sure how. 
 boar_any_extracted$ID <- boar_any_extracted$`boar_any_extract$.id`
 
-#repeating for the next interaction (boar --> boar). same steps as above.
+#repeat for wild pig to wild pig
 boar_boar_extract <- tidyr::pivot_longer(df_time_diff_boar_boar, c(2:50), values_drop_na = TRUE)
 boar_boar_extracted <- cbind.data.frame(boar_boar_extract$.id, boar_boar_extract$value)
 boar_boar_extracted$Type <- rep(c("Boar_boar"), times = 11)
 boar_boar_extracted$ID <- boar_boar_extracted$`boar_boar_extract$.id`
 
-#repeating for the next interaction (native --> native). same steps as above.
+#repeat for native to native
 any_any_extract <- tidyr::pivot_longer(df_time_diff_any_any, c(2:50), values_drop_na = TRUE)
 any_any_extracted <- cbind.data.frame(any_any_extract$.id, any_any_extract$value)
 any_any_extracted$Type <- rep(c("Native_native"), times = 517)
 any_any_extracted$ID <- any_any_extracted$`any_any_extract$.id`
 
-#repeating for the next interaction (human --> native). same steps as above. CENSOR
+#repeat for human to native species  
 human_native_extract <- tidyr::pivot_longer(df_time_diff_human_native, c(2:50), values_drop_na = TRUE)
 human_native_extracted <- cbind.data.frame(human_native_extract$.id, human_native_extract$value)
 human_native_extracted$Type <- rep(c("Human_native"), times = 27)
 human_native_extracted$ID <- human_native_extracted$`human_native_extract$.id`
 
-#repeating for the final interaction (human --> native). same steps as above. CENSOR
+#repeat for human to wild pig
 human_boar_extract <- tidyr::pivot_longer(df_time_diff_human_boar, c(2:50), values_drop_na = TRUE)
 human_boar_extracted <- cbind.data.frame(human_boar_extract$.id, human_boar_extract$value)
 human_boar_extracted$Type <- rep(c("Human_boar"), times = 1)
 human_boar_extracted$ID <- human_boar_extracted$`human_boar_extract$.id`
 
 #################################################################################
-#now i need to merge these three TTE dataframes to I can analyze it
-#but first, correcting the columns so all names line up
+#clean up and merge 3 dataframes 
 boar_boar_extracted$TTE <- boar_boar_extracted$`boar_boar_extract$value`
 boar_any_extracted$TTE <- boar_any_extracted$`boar_any_extract$value`
 any_any_extracted$TTE <- any_any_extracted$`any_any_extract$value`
@@ -203,7 +192,7 @@ any_any_extracted$TTE <- any_any_extracted$`any_any_extract$value`
 human_boar_extracted$TTE <- human_boar_extracted$`human_boar_extract$value`
 human_native_extracted$TTE <- human_native_extracted$`human_native_extract$value`
 
-#removing the old columns with the bad names. Sorry, this is not efficient but.. worked for me
+#clean up unnecessary columns 
 boar_boar_clean <- dplyr::select(boar_boar_extracted, -1,-2)
 boar_any_clean <- dplyr::select(boar_any_extracted, -1,-2)
 any_any_clean <- dplyr::select(any_any_extracted, -1,-2)
@@ -212,34 +201,32 @@ human_boar_clean <- dplyr::select(human_boar_extracted, -1,-2)
 human_native_clean <- dplyr::select(human_native_extracted, -1,-2)
 
 #################################################################################
-#merging the DF's into one to analyze
+#merge to an analysis dataframe
 cox_1.0 <- rbind(boar_any_clean, boar_boar_clean, any_any_clean, 
                  human_boar_clean, human_native_clean)
 
 #save as a CSV
 cox_1.0 <- write_csv(cox_1.0, "cox_1.0.csv")
 ##############################################################################
-# okay now that I have my DF set up... I need to attach the habitat covars +  time etc. 
+# attaching habitat covariates to TTE's
 
-#re-loading the dataset where the co vars are attached for each camera location
+#load habitat covar data 
 BoarDATA <- read_csv("Data/Processed/BoarDATA.csv", 
                      col_types = cols(posixdate = col_datetime(format = "%m/%d/%Y %H:%M")))
 
-#re-loading the processed TTE dataframe
+#TTE data
 cox_1.0 <- read_csv("Data/Processed/cox_1.0.csv")
 
-
-#sub set the first data set so that i have what i need from big DF
+#subset habitat data to covars of intetest 
 sub <- BoarDATA[c("Camera", "posixdate", "Habitat_Ty" , "ElevationC", "DIST_WATER", "DIST_ROAD")]
 
-#rename ID --> camera in the other DF
+#rename 
 colnames(cox_1.0)[2] <- "Camera"
 
 #creating a column of unique values in cox_1.0 to sort out later after merge. 
 cox_1.0$Unique <- c(1:530)
 
-#changing names in column to match up for merge. b/c of the weird names this is the best 
-## way i know how to do it. in hindsight.. would have purely numeric names. 
+#renaming numerical to camera_id names
 cox_1.0$Camera[cox_1.0$Camera == "1"] <- "Cam01"
 cox_1.0$Camera[cox_1.0$Camera == "2"] <- "Cam02"
 cox_1.0$Camera[cox_1.0$Camera == "3"] <- "Cam03"
@@ -258,24 +245,23 @@ cox_1.0$Camera[cox_1.0$Camera == "15"] <- "Cam16"
 cox_1.0$Camera[cox_1.0$Camera == "16"] <- "Cam17"
 cox_1.0$Camera[cox_1.0$Camera == "17"] <- "Cam18"
 
-#okay cool. now i can finally merge all cox_1.0 + sub set covars. b/c this dont work yet 
+#merge 
 intermediate <- merge(cox_1.0, sub, by = "Camera", all.x = FALSE, all.y = FALSE, no.dups = TRUE)
 
-#now can i filter out by unique values?
+#filter by unique values
 almostthere <-  intermediate %>% 
   group_by(Unique) %>%
   filter(row_number()==1)
 
-#final step is to rename that weird cropland/? to normal cropland so it can be a category.
+#fix habitat names for plotting later 
 almostthere$Habitat_Ty[almostthere$Habitat_Ty == "Cropland/?"] <- "Cropland"
 almostthere$Habitat_Ty[almostthere$Habitat_Ty == "Pasture"] <- "Apasture"
 
-#export this as a df ready to analyze. 
-
+# save analysis dataframe
 cox_analyze <- write_csv(almostthere, "cox_analyze.csv")
+
 ######################################################################################################################
-# Great, now we can actually run these hazard models
-######################################################################################################################
+# Hazard models
 #packages req'd for hazard models
 library(readr)
 library(data.table)
@@ -289,21 +275,18 @@ library(plotrix)
 #data 
 cox_analyze <- read_csv("Data/Processed/cox_analyze.csv")
 
-#remove the human observations, just wanted to not include them inturrupting 
+#remove the human inturrupted observations  
 cox_analyze <- subset(cox_analyze$Type, select = -c("Human_native", "Human_boar"))  
 
-#looking at structure 
-str(cox_analyze)
-
-#all characters as factors
+#structuring
 cox_analyze$Camera <- as.factor(cox_analyze$Camera)
 cox_analyze$Type <- as.factor(cox_analyze$Type)
 cox_analyze$Habitat_Ty <- as.factor(cox_analyze$Habitat_Ty)
 
-#need TTE's as positive not negative numbers. Function calculates TTE as a negative 
+#TTE's as positive numbers  
 cox_analyze$TTE <- abs(cox_analyze$TTE)
 #####################################################################################################
-#model set for ranking based on the few imp. covars were interested in
+#model set for ranking based on the few important covars
 
 #just a test model to make sure structure works. 
 test <- coxph(Surv(TTE) ~ 1, data = cox_analyze)
@@ -330,9 +313,8 @@ model <- coxme(Surv(TTE) ~ Habitat_Ty + Type  + (1|Camera), data = cox_analyze)
 summary(model)
 AIC3 <- AICc(model)
 
-##############3
-#creating an AICc table for model ranking
 
+#creating an AICc table for model ranking
 #putting AICc values into a vector with models attached
 Model_names <- c("Base", "Type", "Habitat", "Habitat + Type")
 AICvector <- c(AICbase, AIC1, AIC2, AIC3)
@@ -353,13 +335,14 @@ exp(mean(log(cox_analyze$TTE[cox_analyze$Type == "Boar_native"])))
 
 exp(mean(log(cox_analyze$TTE[cox_analyze$Type == "Anative_native"])))
 # mean = 11.18876 hrs   median = 6.471181
+
 ################################################################################################
 #Below is predicting risk based on the top suppored model. 
 
 #creating new column of predicted risk from model
 cox_analyze$risk <- coxme:::predict.coxme(model, type="risk")
 
-#sub setting the predicted risk by the interaction type and then generating summary stats 
+#subsetting the predicted risk by the interaction type and then generating summary stats 
 b_b <- filter(cox_analyze, Type == "Boar_boar")
 mean(b_b$risk)  
 median(b_b$risk)
@@ -382,12 +365,12 @@ std.error(n_n$risk)
 library(ggplot2)
 library(ggpubr)
 
-#create a new DF dropping the censor data so I can make a boxplot of predicted risk. 
+#new data just to plot 
 boxplot_data <- cox_analyze
 
 boxplot_data$Type <- as.character(boxplot_data$Type)
 
-#just getting names consistent with MS
+#consistent names 
 boxplot_data$Type[boxplot_data$Type == "Boar_boar"] <- "wild pig:wild pig"
 boxplot_data$Type[boxplot_data$Type == "Boar_native"] <- "wild pig:native"
 boxplot_data$Type[boxplot_data$Type == "Anative_native"] <- "native:native species"
@@ -428,7 +411,7 @@ ggplot(data = boxplot_data, mapping = aes(x = Type, y = risk, fill=Type)) +
 ###############################################################################
 #plotting the coefficient values from top supported hazard model.
 
-#only new req'd package. 
+#package call  
 library(tibble)
 
 #coe'f names, values, and error
@@ -446,7 +429,7 @@ model.summary$Confid <- (model.summary$SE * 1.96)
 bold.hab <- c("Wild pig:wild pig")
 bold.labels <- ifelse(levels(model.summary$Coefs) %in% bold.hab, yes = "bold", no = "plain")
 
-#the plot of coef values for the appendix.
+#the plot of coef values for the suppliment
 ggplot(model.summary, aes(x=Coefs, y=Values)) +
   geom_point(col="black", size=3) +
   xlab("Coefficients from top supported model") + ylab("Standardized coefficient value") +
@@ -463,8 +446,8 @@ ggplot(model.summary, aes(x=Coefs, y=Values)) +
            fontface = "bold")
 
 ################################################################################
-#Figure to show that we have confidence in difference between species to species distributions
-#new packages required                
+#Bootstrapping distributions of each event type to show we have confidence in trends exhibited (Fig 4)
+#packages required                
 library(png)
 library(jpeg)
 library(grid)
@@ -490,7 +473,6 @@ median(b_b_sub$TTE) #11
 box_sub <- subset(cox_analyze, !Type == "Native_native")
 
 #bootstrapping native-to-native species dist'n to n=7 (smallest sample in data), and reiterating 1000x
-#highlighting that despite small sample, trends still hold
 set.seed(08092023)
 TTE <- replicate(1000, median(sample(n_n_sub$TTE, 7, replace = TRUE)))
 
@@ -518,7 +500,6 @@ b_n_boxplot_img <- ggplot(box_sub) +
         axis.title = element_blank())
 
 #saving blank version of the boxplot to be imposed with probabilty distribution
-
 ggsave("/Output/Box_insert.png",
        plot = b_n_boxplot_img, 
        device = "png")
