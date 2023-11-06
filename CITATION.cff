@@ -1,0 +1,16 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: Carwsell
+  given-names: B.M.
+- family-names: Boyle
+  given-names: S.P.
+- family-names: Brook
+  given-names: R.K.
+- family-names: van Beest
+  given-names: F.M.
+- family-names: Vander Wal
+  given-names: E.
+title: Variation in spatiotemporal activity may reduce competitive interactions between invasive wild pigs (Sus scrofa) and native mammal species
+version: v0.0.0.9000
+date-released: 2023-11-06

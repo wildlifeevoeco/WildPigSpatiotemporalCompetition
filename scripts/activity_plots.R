@@ -1,8 +1,8 @@
-### This script is for the 24-hour activity patten graphs. 
+### This script is for the 24-hour activity pattern graphs. 
 #most of this code was adapted from Louvrier et al. 2021
 
 
-##lpackages req'd for figures 
+##packages req'd for figures 
 library(camtrapR)
 library(car)
 library(maptools)
@@ -19,11 +19,11 @@ library(maptools)
 library(data.table)
 library(ggplot2)
 
-###### Importing data 
+# Data import 
 BoarDATA <- read_csv("Data/Processed/BoarDATA.csv", 
                      col_types = cols(posixdate = col_datetime(format = "%m/%d/%Y %H:%M")))
 
-#renaming all names in the data sheet so I have consistent names for figures as in MS
+#species event renames
 unique(BoarDATA$Animal)
 BoarDATA$Animal[BoarDATA$Animal == "Boar"] <- "wild pig"
 BoarDATA$Animal[BoarDATA$Animal == "White Tailed Deer"] <- "white tailed deer"
@@ -32,30 +32,28 @@ BoarDATA$Animal[BoarDATA$Animal == "Moose"] <- "moose"
 BoarDATA$Animal[BoarDATA$Animal == "Mule Deer"] <- "mule deer"
 BoarDATA$Animal[BoarDATA$Animal == "Elk"] <- "elk"
 
-# everything to  character
-class(BoarDATA$Camera) #character
-class(BoarDATA$posixdate) #posix
-
+#data structuring
+class(BoarDATA$Camera) 
+class(BoarDATA$posixdate) 
 BoarDATA$posixdate <- as.character(BoarDATA$posixdate)
 
 ##############################################################################
-# create activity overlap plot
-# define species of interest
+# create activity overlap plots
+#define species of interest
 species_interest <- c("wild pig", "moose", "white tailed deer", "coyote", "elk", "mule deer", "native")
 Native <- c("white tailed deer", "coyote", "elk", "mule deer")
 
-#consistent colour patterns with other figures in other script
+#colour palate
 color_list <- c("#E69F00", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#29AF7FFF", "#56B4E9")
 
 ###############################################################################
-#need to fix habiat types column here. typo in my OG data
+#fix habitat name
 unique(BoarDATA$Habitat_Ty)
 BoarDATA$Habitat_Ty[BoarDATA$Habitat_Ty == "Cropland/?"] <- "Cropland"
 
 habs <- unique(BoarDATA$Habitat_Ty)
 
-#first make a new column of "Native" or boar. 
-#just renaming becuase im very inconsistent with names apparently
+#first make a new column of "native" or wild pig
 BoarDATA$native <- BoarDATA$Animal
 BoarDATA$native[BoarDATA$native == "Boar"] <- "wild pig"
 BoarDATA$Animal[BoarDATA$native == "White Tailed Deer"] <- "white tailed deer"
@@ -69,9 +67,7 @@ BoarDATA$native <-  mapvalues(BoarDATA$native, from =
                                   "mule deer", "moose"), to = c("native",
                                                                 "native", "native", "native", "native"))
 
-
-# 2D comparison of temporal overlap between wild pigs + all native species in one group
-
+# 2D comparison of temporal overlap between wild pigs + all native species 
 speciesA_for_activity <- "wild pig"    
 speciesB_for_activity <- "native"    
 dataf <- BoarDATA
@@ -88,7 +84,7 @@ d_overlap_boarnative <- activityOverlap(recordTable = dataf,
                                         #plotDirectory = getwd()
 )
 
-dhat <- "0.72" 
+dhat <- "0.72"  #coef of activtiy overlap. See Ridout and Linkie 2009.
 
 plot_overlap <- function(speciesA_for_activity, speciesB_for_activity, d_overlap)
 {
@@ -146,9 +142,8 @@ plot_overlap <- function(speciesA_for_activity, speciesB_for_activity, d_overlap
 boarnative <- plot_overlap(speciesA_for_activity,speciesB_for_activity, d_overlap_boarnative)
 boarnative
 ##############################################################################################################################################################
-# now i can crete circular plots for each sp. combination. and make multipannel 
-#Circular plots !! 
-#going to try to make one for boar v.s. moose
+#Circular diel plots of wild pig to each native species 
+#wild pig / moose
 
 # create activity overlap plot
 # define species of interest
@@ -205,8 +200,7 @@ B_M <-  ggplot(data = ABCDEF, aes(x = x, y = value, colour = species)) +
 
 plot(B_M)
 ##############################################################################################################################################################
-# ROUND 2
-#boar v.s. moose
+#wild pig / white tail
 
 # create activity overlap plot
 # define species of interest
@@ -263,8 +257,7 @@ B_WTD <-  ggplot(data = ABCDEF, aes(x = x, y = value, colour = species)) +
 
 plot(B_WTD)
 ##############################################################################################################################################################
-# ROUND 3
-#boar v.s. Mule Deer
+#wild pig / Mule Deer
 
 # create activity overlap plot
 # define species of interest
@@ -321,8 +314,7 @@ B_MD <-  ggplot(data = ABCDEF, aes(x = x, y = value, colour = species)) +
 
 plot(B_MD)
 ##############################################################################################################################################################
-# ROUND 4
-#boar v.s. Elk
+#wild pig / Elk
 
 # create activity overlap plot
 # define species of interest
@@ -379,8 +371,7 @@ B_E <-  ggplot(data = ABCDEF, aes(x = x, y = value, colour = species)) +
 
 plot(B_E)
 ##############################################################################################################################################################
-# ROUND 5 
-#boar v.s. Coyote
+#wild pig / Coyote
 
 # create activity overlap plot
 # define species of interest
@@ -438,7 +429,7 @@ B_C <-  ggplot(data = ABCDEF, aes(x = x, y = value, colour = species)) +
 plot(B_C)
 
 ##############################################################################################################################################################
-#now, taking the 5 circular plots from above and making a multipannel figure
+#now, taking the 5 circular plots from above and making a multipanel figure
 library(cowplot)
 library(grid)
 library(ggplotify)

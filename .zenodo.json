@@ -1,0 +1,27 @@
+{
+  "description": "<p>This repository contains the code accompanying the paper &ldquo;Variation in spatiotemporal activity may reduce competitive interactions between invasive wild pigs (Sus scrofa) and native mammal species&rdquo;.</p>", 
+  "title": "Code accompanying - Variation in spatiotemporal activity may reduce competitive interactions between invasive wild pigs (Sus scrofa) and native mammal species", 
+  "creators": [
+    {
+      "affiliation": "Memorial University", 
+      "name": "B.M. Carswell"
+    }, 
+    {
+      "affiliation": "Memorial University", 
+      "name": "S.P. Boyle"
+    }, 
+    {
+      "affiliation": "University of Saskatchewan", 
+      "name": "R.K. Brook"
+    }, 
+    {
+      "affiliation": "Aarhus University", 
+      "name": "F.M. van Beest"
+    }, 
+    {
+      "orcid": "0000-0002-8534-4317", 
+      "affiliation": "Memorial University", 
+      "name": "E. Vander Wal"
+    }
+  ]
+}
