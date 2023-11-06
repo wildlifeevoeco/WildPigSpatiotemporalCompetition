@@ -1,7 +1,5 @@
+# Variation in spatiotemporal activity may reduce competitive interactions between invasive wild pigs (Sus scrofa) and native mammal species
 
-
-
-## Variation in temporal activity may reduce competitive interaction between native and introduced species
 
 - Authors:
      - Brendan Carswell
