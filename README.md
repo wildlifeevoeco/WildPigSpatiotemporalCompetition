@@ -1,7 +1,7 @@
 
 
 
-## Variation in temporal activity may reduce competetive interaction between native and introduced species
+## Variation in temporal activity may reduce competitive interaction between native and introduced species
 
 - Authors:
      - Brendan Carswell
@@ -11,6 +11,6 @@
      - [Eric Vander Wal](https://weel.gitlab.io/)
 
 
-This repository contains the code accompanying the paper ["Variation in temporal activity may reduce competetive interaction between native and introduced species"].
+This repository contains the code accompanying the paper ["Variation in temporal activity may reduce competitive interaction between native and introduced species"].
 Scripts are under `scripts/`.  
 

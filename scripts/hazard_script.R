@@ -2,7 +2,7 @@
 #Code for Carswell et al. wild pigs paper
 #Script 1: Contains code for proportional hazard models + plotting coef's
 
-#laoding 1st set of req. packages
+#loading 1st set of req. packages
 library(dplyr)
 library(readr)
 library(camtrapR)
@@ -21,12 +21,12 @@ BoarDATA <- read_csv("Data/Processed/BoarDATA.csv",
 
 ########################################################################################################
 #this section will identify the species of interest, and filter out the species recorded 
-## that are unliekly to be ecologically affected (or at least managers wont care by many interactions)
+## that are unlikely to be ecologically affected (or at least managers wont care by many interactions)
 
 #convert to data table to work with
 BoarDATA2 <- as.data.table(BoarDATA)
 
-#coverting boar --> invasive species and mammals of interest to native b/c we need to group to have enough 
+#converting boar --> invasive species and mammals of interest to native b/c we need to group to have enough 
 #observations 
 species_interest <- c("Native", "Invasive", "Human")
 
@@ -53,7 +53,7 @@ BoarDATA3 <- as.data.frame(BoarDATA3)
 
 ########################################################################################################
 ## Much of this code is adapted from Louvrier et al. 2021
-#I wasnt able to get the function (below) to run wihtout re-naming my variables to the same names they had.
+#I wasnt able to get the function (below) to run without re-naming my variables to the same names they had.
 #so just aligning our data so the function can run correctly.
 CT_act_MN <- BoarDATA3
 
@@ -96,7 +96,7 @@ calculate_delta <- function(species)
     
     #delta is going to contain the calculated difference of time between species A and B for each row of the detections of the CT
     #but only if the two species from row i and i+1 are in the specific order
-    #if the combination of the species names between the row i and i + 1 is equal to the names of the species of interest     stuck togetehr then we calcutalte difftime between the two lines,  otherwise, no
+    #if the combination of the species names between the row i and i + 1 is equal to the names of the species of interest     stuck together then we calculate difftime between the two lines,  otherwise, no
     
     delta <- rep(NA, nrow(B_ordered))
     for(i in 1: (nrow(B_ordered)))
@@ -143,7 +143,7 @@ delata_boar_boar <- calculate_delta(species)
 #putting this in a dataframe 
 df_time_diff_boar_boar = plyr::ldply(delata_boar_boar, rbind)
 
-##extracting events that were interuppted by humans (censor). First human --> native species
+##extracting events that were interupted by humans (censor). First human --> native species
 species = c(species_interest[3],species_interest[1])
 delata_human_native <- calculate_delta(species) 
 #putting this in a dataframe 
@@ -272,7 +272,7 @@ almostthere$Habitat_Ty[almostthere$Habitat_Ty == "Pasture"] <- "Apasture"
 
 #export this as a df ready to analyze. 
 
-cox_analyze <- write_csv(almostthere, "cox_analyze.csv"
+cox_analyze <- write_csv(almostthere, "cox_analyze.csv")
 ######################################################################################################################
 # Great, now we can actually run these hazard models
 ######################################################################################################################

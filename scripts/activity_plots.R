@@ -1,8 +1,8 @@
-### This script is for the 24-hour activity patten graphs. 
+### This script is for the 24-hour activity pattern graphs. 
 #most of this code was adapted from Louvrier et al. 2021
 
 
-##lpackages req'd for figures 
+##packages req'd for figures 
 library(camtrapR)
 library(car)
 library(maptools)
@@ -48,14 +48,14 @@ Native <- c("white tailed deer", "coyote", "elk", "mule deer")
 color_list <- c("#E69F00", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#29AF7FFF", "#56B4E9")
 
 ###############################################################################
-#need to fix habiat types column here. typo in my OG data
+#need to fix habitat types column here. typo in my OG data
 unique(BoarDATA$Habitat_Ty)
 BoarDATA$Habitat_Ty[BoarDATA$Habitat_Ty == "Cropland/?"] <- "Cropland"
 
 habs <- unique(BoarDATA$Habitat_Ty)
 
 #first make a new column of "Native" or boar. 
-#just renaming becuase im very inconsistent with names apparently
+#just renaming because im very inconsistent with names apparently
 BoarDATA$native <- BoarDATA$Animal
 BoarDATA$native[BoarDATA$native == "Boar"] <- "wild pig"
 BoarDATA$Animal[BoarDATA$native == "White Tailed Deer"] <- "white tailed deer"
@@ -146,7 +146,7 @@ plot_overlap <- function(speciesA_for_activity, speciesB_for_activity, d_overlap
 boarnative <- plot_overlap(speciesA_for_activity,speciesB_for_activity, d_overlap_boarnative)
 boarnative
 ##############################################################################################################################################################
-# now i can crete circular plots for each sp. combination. and make multipannel 
+# now i can create circular plots for each sp. combination. and make multipanel 
 #Circular plots !! 
 #going to try to make one for boar v.s. moose
 
@@ -438,7 +438,7 @@ B_C <-  ggplot(data = ABCDEF, aes(x = x, y = value, colour = species)) +
 plot(B_C)
 
 ##############################################################################################################################################################
-#now, taking the 5 circular plots from above and making a multipannel figure
+#now, taking the 5 circular plots from above and making a multipanel figure
 library(cowplot)
 library(grid)
 library(ggplotify)
